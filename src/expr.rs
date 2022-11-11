@@ -1,5 +1,4 @@
 use nom::{
-    Needed,
     branch::alt,
     multi::many0,
     bytes::complete::{ take_while1, take_while_m_n }
@@ -18,7 +17,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, String> {
     match r {
         Ok((_, ref mut v)) => {
             v.retain(|&x| x != " ");
-            return Ok(v.to_vec().iter(|&x| coerce(x)));
+            return Ok(v.to_vec().into_iter().map(|x| coerce(x)).collect());
         },
         Err(n) => {
             return Err(format!("Unable to tokenize: {}", n));
@@ -34,6 +33,8 @@ pub enum Operator {
     Div,
     Mod,
     Exp,
+    OpenParens,
+    CloseParens,
     Sin,
     Cos,
     Tan,
@@ -50,37 +51,40 @@ pub enum Literal {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     Operator(Operator),
     Literal(Literal),
+    Variable(&'a str)
 }
 
-pub fn coerce(s: &str) -> Result<Token, &str> { 
+pub fn coerce(s: &str) -> Token { 
     if let Ok(n) = s.parse::<u128>() {
-        return Ok(Token::Literal(Literal::Unsigned(n)));
+        return Token::Literal(Literal::Unsigned(n));
     }
     
     if let Ok(n) = s.parse::<i128>() {
-        return Ok(Token::Literal(Literal::Signed(n)));
+        return Token::Literal(Literal::Signed(n));
     }
     
     if let Ok(n) = s.parse::<f64>() {
-        return Ok(Token::Literal(Literal::Float(n)));
+        return Token::Literal(Literal::Float(n));
     }
 
     match s.to_lowercase().as_str() {
-        "+" => { Ok(Token::Operator(Operator::Add)) },
-        "-" => { Ok(Token::Operator(Operator::Sub)) },
-        "*" => { Ok(Token::Operator(Operator::Mul)) },
-        "/" => { Ok(Token::Operator(Operator::Div)) },
-        "%" => { Ok(Token::Operator(Operator::Mod)) },
-        "^" => { Ok(Token::Operator(Operator::Exp)) },
-        "sin" => { Ok(Token::Operator(Operator::Sin)) },
-        "cos" => { Ok(Token::Operator(Operator::Cos)) },
-        "tan" => { Ok(Token::Operator(Operator::Tan)) },
-        "sec" => { Ok(Token::Operator(Operator::Sec)) },
-        "csc" => { Ok(Token::Operator(Operator::Csc)) },
-        "arctan" => { Ok(Token::Operator(Operator::Arctan)) },
-        _ => { Err("Unable to parse value") }
+        "+" => { Token::Operator(Operator::Add) },
+        "-" => { Token::Operator(Operator::Sub) },
+        "*" => { Token::Operator(Operator::Mul) },
+        "/" => { Token::Operator(Operator::Div) },
+        "%" => { Token::Operator(Operator::Mod) },
+        "^" => { Token::Operator(Operator::Exp) },
+        "(" => { Token::Operator(Operator::OpenParens) },
+        ")" => { Token::Operator(Operator::CloseParens) },
+        "sin" => { Token::Operator(Operator::Sin) },
+        "cos" => { Token::Operator(Operator::Cos) },
+        "tan" => { Token::Operator(Operator::Tan) },
+        "sec" => { Token::Operator(Operator::Sec) },
+        "csc" => { Token::Operator(Operator::Csc) },
+        "arctan" => { Token::Operator(Operator::Arctan) },
+        _ => { Token::Variable(s) }
     }
 }
